@@ -5,12 +5,15 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 
 char ipstr[INET6_ADDRSTRLEN];
 
 #define PORT "3940"
 #define BACKLOG 10 
+#define BUFF_SIZE 1020 
 
 void* get_in_addr(struct sockaddr* sa){
   if(sa->sa_family==AF_INET){
@@ -19,7 +22,21 @@ void* get_in_addr(struct sockaddr* sa){
   return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-int main(int argv,char* argc[]){
+
+
+int send_file(int client_fd,char* file_name){
+  //TODO:handle edge cases for files
+  char buffer[BUFF_SIZE];
+  int file=open(file_name,O_RDONLY);
+  int bytes;
+  int bytes_sent=0;
+  while((bytes=read(file,buffer,BUFF_SIZE))>0){
+  bytes_sent+=send(client_fd,buffer,BUFF_SIZE,0);
+  }
+  return bytes_sent;
+}
+
+int main(int argc,char* argv[]){
 struct addrinfo hints,*res;
 memset(&hints, 0, sizeof(hints));
 hints.ai_family=AF_UNSPEC;
@@ -62,10 +79,11 @@ listen(sockfd,BACKLOG);
 printf("server: waiting for connections...\n");
 struct sockaddr_storage client_addr;
 
+int new_fd;
 while(1){
 
 socklen_t addr_size=sizeof client_addr;
-int new_fd=accept(sockfd,(struct sockaddr *)&client_addr,&addr_size);
+new_fd=accept(sockfd,(struct sockaddr *)&client_addr,&addr_size);
 
 
 char in_str[INET6_ADDRSTRLEN];
@@ -74,13 +92,14 @@ printf("server: got connection from %s\n", in_str);
 
 
 //send the data you want
-char* msg = "hello world";
-int msg_len=strlen(msg);
-int bytes_sent=send(new_fd,msg,msg_len,0);
+int bytes_sent=send_file(new_fd,argv[1]);
 printf("server: bytes sent [%d]\n", bytes_sent);
-close(new_fd);
 
 
+//sending file over network
+
+
+  close(new_fd);
   }
 return 0;
 }
