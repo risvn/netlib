@@ -13,7 +13,7 @@ WINDOW *create_newwin(int height, int width, int starty, int startx)
     return local_win;
 }
 
-int main()
+int main(int argc,char* argv[])
 {
 
     initscr();
@@ -28,8 +28,8 @@ int main()
     wrefresh(menu);                  // 3. refresh window
     keypad(menu, TRUE);
 
-    char* options[4] ={"file1","file2","file3","file"};
-    int n_options=LEN(options);
+    char **options = argv+1;
+    int n_options=argc-1;
 
     int choice;
     int highlight=0;
@@ -40,7 +40,8 @@ int main()
              wattron(menu,A_REVERSE);
       mvwprintw(menu,i+1,1, options[i]);
       wattroff(menu,A_REVERSE);
-      }
+            }
+
     choice = wgetch(menu);
 
     switch(choice){
