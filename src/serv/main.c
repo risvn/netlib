@@ -7,13 +7,20 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 
 char ipstr[INET6_ADDRSTRLEN];
 
+
+
 #define PORT "3940"
 #define BACKLOG 10 
 #define BUFF_SIZE 1020 
+
+#define TYPE_DIR 1
+#define TYPE_FILE 0
+#define BUF_SIZE 10
 
 void* get_in_addr(struct sockaddr* sa){
   if(sa->sa_family==AF_INET){
@@ -36,6 +43,44 @@ int send_file(int client_fd,char* file_name){
   return bytes_sent;
 }
 
+//[TYPE][LENGTH][DATA]
+int send_dir(int client_fd,const char* dir_name){
+  DIR* dp=opendir(dir_name);
+  struct dirent* entry;
+  
+  char* file_ls[100];
+  int count=0;
+    send(client_fd,"SOF",3, 0);
+    file_ls[count++]= "START"; 
+
+    while((entry=readdir(dp))!=NULL){
+    file_ls[count++]=strdup(entry->d_name);
+    }
+    file_ls[count++]= "END"; 
+
+    closedir(dp);
+    char buffer[BUF_SIZE];
+    int bytes;
+    bytes=recv(client_fd,buffer,BUF_SIZE,0);
+    char check[3];
+    strncpy(check,buffer,2);
+    check[2]='\0';
+
+  int snd_count=0;
+    if(!strcmp(check,"OK")){ 
+      printf("[client] %s\n",check);
+  while(snd_count!=count){
+    send(client_fd, file_ls[snd_count], strlen(file_ls[snd_count]), 0);
+    send(client_fd, "\n", 1, 0);
+    snd_count++;
+  }
+  }
+    return 0;
+  }
+
+
+
+
 int main(int argc,char* argv[]){
 struct addrinfo hints,*res;
 memset(&hints, 0, sizeof(hints));
@@ -49,39 +94,16 @@ if (status != 0) {
         return 1;
     }
   
-  
-//void* addr;
-//struct sockaddr_in* ipv4;
-//struct sockaddr_in6* ipv6;
-//char *ipver;
-//
-//
-//  //get
-//if(res->ai_family==AF_INET){
-//    ipv4 = (struct sockaddr_in *)res->ai_addr;
-//    addr = &(ipv4->sin_addr);
-//    ipver="ipv4";
-//  }
-//else{
-//        ipv6 = (struct sockaddr_in6 *)res->ai_addr;
-//        addr=&(ipv6->sin6_addr);
-//        ipver="ipv6";
-//  }
-//     // convert the IP to a string and print it:
-//        inet_ntop(res->ai_family, addr, ipstr, sizeof ipstr);
-//       printf("  %s: %s\n", ipver, ipstr);
-
-
 int sockfd=socket(res->ai_family,res->ai_socktype,0);
 bind(sockfd,res->ai_addr,res->ai_addrlen);
 
 listen(sockfd,BACKLOG);
-printf("server: waiting for connections...\n");
 struct sockaddr_storage client_addr;
 
 int new_fd;
 while(1){
 
+printf("server: waiting for connections...\n");
 socklen_t addr_size=sizeof client_addr;
 new_fd=accept(sockfd,(struct sockaddr *)&client_addr,&addr_size);
 
@@ -92,8 +114,9 @@ printf("server: got connection from %s\n", in_str);
 
 
 //send the data you want
-int bytes_sent=send_file(new_fd,argv[1]);
-printf("server: bytes sent [%d]\n", bytes_sent);
+//int bytes_sent=send_file(new_fd,argv[1]);
+//printf("server: bytes sent [%d]\n", bytes_sent);
+ send_dir(new_fd,argv[1]);
 
 
 //sending file over network

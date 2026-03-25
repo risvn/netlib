@@ -13,23 +13,25 @@ WINDOW *create_newwin(int height, int width, int starty, int startx)
     return local_win;
 }
 
-int main(int argc,char* argv[])
+int show_menu(int count,char* items[])
 {
 
     initscr();
     cbreak();
     noecho();
-
+  
+    int rows, cols;
+    getmaxyx(stdscr, rows, cols);
+    WINDOW *menu = newwin(rows, cols, 1, 0);
     
 
-    WINDOW *menu= newwin(10, 30, 5, 10);
     box(menu, 0, 0);                 // 1. draw border first
     refresh();
     wrefresh(menu);                  // 3. refresh window
     keypad(menu, TRUE);
 
-    char **options = argv+1;
-    int n_options=argc-1;
+    char **options = items+1;
+    int n_options=count-1;
 
     int choice;
     int highlight=0;
